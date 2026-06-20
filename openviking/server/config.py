@@ -7,11 +7,10 @@ from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationError
 
-from openviking.server.identity import AuthMode
-from openviking_cli.utils import get_logger
-
 # Import auth plugin registry for config validation
 from openviking.server.auth.registry import get_registry
+from openviking.server.identity import AuthMode
+from openviking_cli.utils import get_logger
 from openviking_cli.utils.config.config_loader import (
     load_json_config,
     resolve_config_path,
@@ -159,6 +158,15 @@ class ToolOutputExternalizationConfig(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class SessionAutoCommitConfig(BaseModel):
+    """Server-wide controls for automatic session commits."""
+
+    idle_enabled: bool = True
+    check_interval_seconds: float = Field(default=60.0, gt=0)
+
+    model_config = {"extra": "forbid"}
+
+
 class ServerConfig(BaseModel):
     host: str = "127.0.0.1"
     port: int = 1933
@@ -180,6 +188,7 @@ class ServerConfig(BaseModel):
     public_base_url: Optional[str] = None
     upload_signed_ttl_seconds: int = 600
     temp_upload: TempUploadConfig = Field(default_factory=TempUploadConfig)
+    session_auto_commit: SessionAutoCommitConfig = Field(default_factory=SessionAutoCommitConfig)
     tool_output_externalization: ToolOutputExternalizationConfig = Field(
         default_factory=ToolOutputExternalizationConfig
     )
@@ -351,7 +360,8 @@ def validate_server_config(config: ServerConfig) -> None:
     # Ensure built-in plugins are registered before validation.
     # If a non-built-in plugin has already claimed a built-in mode name,
     # log a security warning and forcefully override it.
-    from openviking.server.auth.plugins import DevAuthPlugin, ApiKeyAuthPlugin, TrustedAuthPlugin
+    from openviking.server.auth.plugins import ApiKeyAuthPlugin, DevAuthPlugin, TrustedAuthPlugin
+
     registry = get_registry()
     _BUILTIN_PLUGINS = {
         "dev": DevAuthPlugin,
@@ -375,8 +385,7 @@ def validate_server_config(config: ServerConfig) -> None:
     plugin_cls = registry.get(effective_auth_mode)
     if plugin_cls is None:
         logger.error(
-            "Unknown auth_mode: %r. No auth plugin registered for this mode. "
-            "Registered modes: %s.",
+            "Unknown auth_mode: %r. No auth plugin registered for this mode. Registered modes: %s.",
             effective_auth_mode,
             ", ".join(registry.list_modes()),
         )

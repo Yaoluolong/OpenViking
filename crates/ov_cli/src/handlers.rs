@@ -464,6 +464,10 @@ pub async fn handle_session(cmd: SessionCommands, ctx: CliContext) -> Result<()>
             role,
             content,
             peer_id,
+            auto_commit_enabled,
+            token_threshold,
+            idle_timeout_seconds,
+            keep_recent_count,
         } => {
             commands::session::add_message(
                 &client,
@@ -471,6 +475,10 @@ pub async fn handle_session(cmd: SessionCommands, ctx: CliContext) -> Result<()>
                 &role,
                 &content,
                 peer_id.as_deref(),
+                auto_commit_enabled,
+                token_threshold,
+                idle_timeout_seconds,
+                keep_recent_count,
                 ctx.output_format,
                 ctx.compact,
             )
@@ -479,11 +487,19 @@ pub async fn handle_session(cmd: SessionCommands, ctx: CliContext) -> Result<()>
         SessionCommands::AddMessages {
             session_id,
             messages,
+            auto_commit_enabled,
+            token_threshold,
+            idle_timeout_seconds,
+            keep_recent_count,
         } => {
             commands::session::add_messages(
                 &client,
                 &session_id,
                 &messages,
+                auto_commit_enabled,
+                token_threshold,
+                idle_timeout_seconds,
+                keep_recent_count,
                 ctx.output_format,
                 ctx.compact,
             )
